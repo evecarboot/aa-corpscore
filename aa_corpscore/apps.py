@@ -14,10 +14,20 @@ class AaCorpScoreConfig(AppConfig):
 
     def ready(self):
         # Register AA menu items and URL hooks. Guarded so the app stays importable
-        # in test environments without allianceauth installed.
+        # in environments where allianceauth/esi aren't fully configured (e.g. unit
+        # tests running against a minimal settings module). A broad guard is used
+        # because allianceauth's import chain can raise RuntimeError (missing
+        # app_label) in addition to ImportError when its apps aren't installed.
         try:
             import aa_corpscore.auth_hooks  # noqa: F401
-        except ImportError:
+        except Exception:
+            pass
+
+        # Register signal handlers for reactive score updates when external
+        # plugins (AA-FatImporter, AFAT, CorpTools, MemberStatus) write data.
+        try:
+            import aa_corpscore.signals  # noqa: F401
+        except Exception:
             pass
 
         # Register Celery beat schedule for nightly score recompute.

@@ -40,6 +40,8 @@ DEFAULT_TIER_CUTOFFS = {
 }
 
 # Default component weights. Must sum to 100 (enforced in admin validation).
+# pvp defaults to 0 (off) - admin must enable zKillboard integration and assign
+# a weight for PvP to affect scores.
 DEFAULT_WEIGHTS = {
     "alliance_fat": 30,
     "corp_fat": 25,
@@ -47,6 +49,7 @@ DEFAULT_WEIGHTS = {
     "corptools": 10,
     "discord": 10,
     "srp": 10,
+    "pvp": 0,
 }
 
 
@@ -62,6 +65,7 @@ class General(models.Model):
             ("view_breakdown", "Can view other members' full score breakdown (hard pull)"),
             ("manage_settings", "Can manage CorpScore settings"),
             ("trigger_recompute", "Can trigger a score recompute"),
+            ("api_access", "Can access CorpScore REST API endpoints"),
         )
 
 
@@ -77,6 +81,9 @@ class ScoreSettings(models.Model):
     weight_corptools = models.PositiveIntegerField(default=10)
     weight_discord = models.PositiveIntegerField(default=10)
     weight_srp = models.PositiveIntegerField(default=10)
+    weight_pvp = models.PositiveIntegerField(default=0)
+    weight_memberstatus = models.PositiveIntegerField(default=0)
+    weight_industrypool = models.PositiveIntegerField(default=0)
 
     # Decay windows in days. Activity inside the window counts full; older
     # activity decays linearly to zero over the trailing window.
@@ -84,6 +91,17 @@ class ScoreSettings(models.Model):
     decay_window_corp_fat = models.PositiveIntegerField(default=90)
     decay_window_activity = models.PositiveIntegerField(default=180)
     decay_window_discord = models.PositiveIntegerField(default=30)
+    decay_window_pvp = models.PositiveIntegerField(default=90)
+    decay_window_memberstatus = models.PositiveIntegerField(default=30)
+    decay_window_industrypool = models.PositiveIntegerField(default=90)
+
+    # zKillboard integration (off by default). When enabled, the PvP adapter
+    # queries the zKillboard Statistics API for each member's characters.
+    zkill_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable zKillboard PvP data as a score component. "
+                  "When off, the PvP adapter is skipped regardless of weight.",
+    )
 
     # Tier cutoffs (lower bound inclusive).
     tier_subprime = models.PositiveIntegerField(default=300)
@@ -124,6 +142,77 @@ class ScoreSettings(models.Model):
     hard_inquiry_penalty_window_days = models.PositiveIntegerField(default=30)
     hard_inquiry_penalty_max = models.PositiveIntegerField(default=10)
 
+    # ------------------------------------------------------------------
+    # ShipFinance integration (aa-shipfinance).
+    # When enabled, CorpScore exposes a public API that ShipFinance calls
+    # to adjust interest rates, insurance premiums, and eligibility based
+    # on the member's CorpScore tier. Like real-life credit scores affecting
+    # loan terms. Off by default.
+    # ------------------------------------------------------------------
+    shipfinance_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable ShipFinance integration. When on, the member's "
+                  "CorpScore tier affects their interest rate, insurance "
+                  "premium, and eligibility for finance/rentals.",
+    )
+
+    # Minimum score to be eligible for finance at all. 0 = no minimum.
+    shipfinance_min_score_finance = models.PositiveIntegerField(
+        default=0,
+        help_text="Members below this score cannot finance ships. 0 = no minimum.",
+    )
+    # Minimum score to be eligible for rentals. 0 = no minimum.
+    shipfinance_min_score_rent = models.PositiveIntegerField(
+        default=0,
+        help_text="Members below this score cannot rent ships. 0 = no minimum.",
+    )
+
+    # Interest rate adjustments per tier (in percentage points, added to the
+    # base rate from ShipFinance's offer config). Negative = discount.
+    shipfinance_rate_adj_subprime = models.DecimalField(
+        max_digits=5, decimal_places=2, default=5.00,
+        help_text="Interest rate adjustment for Subprime (e.g. +5% added to base).",
+    )
+    shipfinance_rate_adj_fair = models.DecimalField(
+        max_digits=5, decimal_places=2, default=2.00,
+        help_text="Interest rate adjustment for Fair Weather Pilot.",
+    )
+    shipfinance_rate_adj_prime = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0.00,
+        help_text="Interest rate adjustment for Prime Member (baseline).",
+    )
+    shipfinance_rate_adj_elite = models.DecimalField(
+        max_digits=5, decimal_places=2, default=-1.50,
+        help_text="Interest rate adjustment for Elite Capsuleer (discount).",
+    )
+    shipfinance_rate_adj_blackcard = models.DecimalField(
+        max_digits=5, decimal_places=2, default=-3.00,
+        help_text="Interest rate adjustment for Black Card (best discount).",
+    )
+
+    # Insurance premium adjustments per tier (in percentage points, added to
+    # the base premium rate). Risky borrowers pay more for insurance.
+    shipfinance_insurance_adj_subprime = models.DecimalField(
+        max_digits=5, decimal_places=2, default=3.00,
+        help_text="Insurance premium adjustment for Subprime.",
+    )
+    shipfinance_insurance_adj_fair = models.DecimalField(
+        max_digits=5, decimal_places=2, default=1.00,
+        help_text="Insurance premium adjustment for Fair Weather Pilot.",
+    )
+    shipfinance_insurance_adj_prime = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0.00,
+        help_text="Insurance premium adjustment for Prime Member (baseline).",
+    )
+    shipfinance_insurance_adj_elite = models.DecimalField(
+        max_digits=5, decimal_places=2, default=-0.50,
+        help_text="Insurance premium adjustment for Elite Capsuleer.",
+    )
+    shipfinance_insurance_adj_blackcard = models.DecimalField(
+        max_digits=5, decimal_places=2, default=-1.00,
+        help_text="Insurance premium adjustment for Black Card.",
+    )
+
     last_recomputed_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -142,6 +231,9 @@ class ScoreSettings(models.Model):
             "corptools": self.weight_corptools,
             "discord": self.weight_discord,
             "srp": self.weight_srp,
+            "pvp": self.weight_pvp,
+            "memberstatus": self.weight_memberstatus,
+            "industrypool": self.weight_industrypool,
         }
 
     def decay_windows(self):
@@ -150,6 +242,9 @@ class ScoreSettings(models.Model):
             "corp_fat": self.decay_window_corp_fat,
             "activity": self.decay_window_activity,
             "discord": self.decay_window_discord,
+            "pvp": self.decay_window_pvp,
+            "memberstatus": self.decay_window_memberstatus,
+            "industrypool": self.decay_window_industrypool,
         }
 
     def tier_cutoffs(self):
@@ -159,6 +254,26 @@ class ScoreSettings(models.Model):
             TIER_PRIME: self.tier_prime,
             TIER_ELITE: self.tier_elite,
             TIER_BLACKCARD: self.tier_blackcard,
+        }
+
+    def shipfinance_rate_adjustments(self):
+        """Return per-tier interest rate adjustments (in percentage points)."""
+        return {
+            TIER_SUBPRIME: self.shipfinance_rate_adj_subprime,
+            TIER_FAIR: self.shipfinance_rate_adj_fair,
+            TIER_PRIME: self.shipfinance_rate_adj_prime,
+            TIER_ELITE: self.shipfinance_rate_adj_elite,
+            TIER_BLACKCARD: self.shipfinance_rate_adj_blackcard,
+        }
+
+    def shipfinance_insurance_adjustments(self):
+        """Return per-tier insurance premium adjustments (in percentage points)."""
+        return {
+            TIER_SUBPRIME: self.shipfinance_insurance_adj_subprime,
+            TIER_FAIR: self.shipfinance_insurance_adj_fair,
+            TIER_PRIME: self.shipfinance_insurance_adj_prime,
+            TIER_ELITE: self.shipfinance_insurance_adj_elite,
+            TIER_BLACKCARD: self.shipfinance_insurance_adj_blackcard,
         }
 
 
@@ -312,3 +427,32 @@ class ScoreEvent(models.Model):
     def __str__(self):
         sign = "+" if self.delta >= 0 else ""
         return f"{self.user} {sign}{self.delta} {self.label}"
+
+
+class DiscordActivityDaily(models.Model):
+    """Daily Discord activity per user, written by the activity_tracker cog.
+
+    One row per Discord UID per date. The cog batches in-memory counters and
+    flushes to this table periodically to avoid a DB write on every message.
+
+    The discord adapter sums rows within the decay window to compute the
+    member's Discord activity score.
+    """
+
+    discord_uid = models.BigIntegerField(db_index=True)
+    date = models.DateField()
+    message_count = models.PositiveIntegerField(default=0)
+    voice_minutes = models.PositiveIntegerField(default=0)
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("discord_uid", "date")]
+        ordering = ["-date"]
+        indexes = [
+            models.Index(fields=["discord_uid", "-date"]),
+        ]
+        verbose_name = "Discord activity (daily)"
+        verbose_name_plural = "Discord activity (daily)"
+
+    def __str__(self):
+        return f"UID {self.discord_uid} {self.date}: {self.message_count} msgs, {self.voice_minutes}min voice"

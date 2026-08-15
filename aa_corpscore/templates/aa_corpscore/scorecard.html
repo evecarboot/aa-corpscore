@@ -1,0 +1,129 @@
+{% extends "aa_corpscore/base.html" %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-credit-card"></i> My CorpScore</h1>
+
+{% if snapshot %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="cs-card" style="text-align:center;">
+      <div class="cs-score-ring" style="--cs-tier-color: {{ tier_color }}; --cs-score-pct: {% widthratio snapshot.score score_max 100 %};">
+        <div class="cs-score-number">{{ snapshot.score }}</div>
+        <div style="font-size:12px;color:#7f8c8d;">out of {{ score_max }}</div>
+      </div>
+      <div class="cs-tier-badge">{{ tier_label }}</div>
+      <p style="margin-top:12px;color:#7f8c8d;font-size:13px;">
+        Last updated {{ snapshot.computed_at|date:"Y-m-d H:i" }}<br>
+        Trigger: {{ snapshot.trigger }}
+      </p>
+
+      {% if spark|length > 1 %}
+      <div style="margin-top:16px;">
+        <div style="font-size:12px;color:#7f8c8d;margin-bottom:4px;">Score history</div>
+        {% for point in spark %}
+          <span class="cs-hist-bar" style="height: {% widthratio point.score score_max 60 %}px;"></span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    {% if helping_components %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;color:#2ecc71;"><i class="fas fa-arrow-up"></i> What's Helping Your Score</h3>
+      {% for c in helping_components %}
+      <div class="cs-factor" style="--cs-tier-color: var(--cs-green);">
+        <div style="width:160px;">
+          <strong>{{ c.component|cut:"_"|title }}</strong>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.note }}</div>
+        </div>
+        <div class="cs-bar"><span style="width: {{ c.normalised|floatformat:0 }}%;"></span></div>
+        <div style="width:90px;text-align:right;">
+          <div style="font-weight:700;">{{ c.normalised|floatformat:0 }}/100</div>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.points|floatformat:1 }} pts</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if hurting_components %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;color:#e74c3c;"><i class="fas fa-arrow-down"></i> What's Hurting Your Score</h3>
+      {% for c in hurting_components %}
+      <div class="cs-factor" style="--cs-tier-color: var(--cs-red);">
+        <div style="width:160px;">
+          <strong>{{ c.component|cut:"_"|title }}</strong>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.note }}</div>
+        </div>
+        <div class="cs-bar"><span style="width: {{ c.normalised|floatformat:0 }}%;"></span></div>
+        <div style="width:90px;text-align:right;">
+          <div style="font-weight:700;">{{ c.normalised|floatformat:0 }}/100</div>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.points|floatformat:1 }} pts</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if neutral_components %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;color:#3498db;"><i class="fas fa-minus"></i> Other Factors</h3>
+      {% for c in neutral_components %}
+      <div class="cs-factor" style="--cs-tier-color: var(--cs-blue);">
+        <div style="width:160px;">
+          <strong>{{ c.component|cut:"_"|title }}</strong>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.note }}</div>
+        </div>
+        <div class="cs-bar"><span style="width: {{ c.normalised|floatformat:0 }}%;"></span></div>
+        <div style="width:90px;text-align:right;">
+          <div style="font-weight:700;">{{ c.normalised|floatformat:0 }}/100</div>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.points|floatformat:1 }} pts</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if achievements %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;"><i class="fas fa-medal"></i> Achievements</h3>
+      {% for a in achievements %}
+      <span class="cs-achievement"><i class="{{ a.achievement.icon }}"></i> {{ a.achievement.name }}
+        <span title="{{ a.achievement.description }}" style="cursor:help;color:#bdc3c7;">&#9432;</span>
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if hard_inquiries %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;"><i class="fas fa-search"></i> Hard Inquiries (last 30 days)</h3>
+      <p style="font-size:12px;color:#95a5a6;">Each hard pull may lower your score. This is a meme, but it's a consistent meme.</p>
+      {% for h in hard_inquiries %}
+      <div class="cs-statement-row">
+        <span>{{ h.pulled_at|date:"Y-m-d H:i" }} by {{ h.pulled_by|default:"unknown" }}</span>
+        <span>{{ h.reason }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="cs-card" style="text-align:center;">
+  <h2>No score yet</h2>
+  <p>Your CorpScore hasn't been computed. Scores are recomputed nightly, or a director can trigger a recompute from the admin dashboard.</p>
+</div>
+{% endif %}
+
+<div style="margin-top:20px;">
+  <a href="{% url 'aa_corpscore:statement' %}" class="btn btn-default"><i class="fas fa-file-invoice-dollar"></i> View my statement</a>
+  <a href="{% url 'aa_corpscore:whatif' %}" class="btn btn-default"><i class="fas fa-sliders-h"></i> Score simulator</a>
+  {% if perms.aa_corpscore.view_leaderboard %}
+  <a href="{% url 'aa_corpscore:leaderboard' %}" class="btn btn-default"><i class="fas fa-trophy"></i> Corp leaderboard</a>
+  {% endif %}
+</div>
+{% endblock %}

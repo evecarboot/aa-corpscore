@@ -1,0 +1,55 @@
+{% extends "aa_corpscore/base.html" %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-cogs"></i> CorpScore Admin</h1>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Status</h3>
+      <p><strong>Last recompute:</strong> {{ last_recomputed_at|default:"never" }}</p>
+      <p><strong>Recompute interval:</strong> {{ settings.recompute_interval_hours }}h (Celery beat nightly at 02:00)</p>
+      <p><strong>Group gating:</strong> {{ settings.group_gating_enabled|yesno:"enabled,disabled" }}</p>
+      {% if settings.group_gating_enabled %}
+        <p><strong>Elite group:</strong> {{ settings.elite_group|default:"none" }}</p>
+        <p><strong>Subprime group:</strong> {{ settings.subprime_group|default:"none" }}</p>
+      {% endif %}
+      <p><strong>Hard inquiry logging:</strong> {{ settings.log_hard_inquiries|yesno:"on,off" }}
+        (penalty {{ settings.hard_inquiry_penalty }} pts each, max {{ settings.hard_inquiry_penalty_max }})</p>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Component Weights</h3>
+      <table class="cs-table">
+        <thead><tr><th>Component</th><th>Weight</th><th>Available</th></tr></thead>
+        <tbody>
+          {% for key, weight in weights.items %}
+          <tr>
+            <td>{{ key|cut:"_"|title }}</td>
+            <td>{{ weight }}%</td>
+            <td>{% if key in available_components %}<i class="fas fa-check" style="color:var(--cs-green);"></i>{% else %}<i class="fas fa-times" style="color:var(--cs-red);"></i>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:#95a5a6;margin-top:8px;">
+        Weights should sum to 100. Edit in Django admin &rarr; CorpScore settings.
+      </p>
+    </div>
+
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Manual Recompute</h3>
+      <p style="font-size:13px;color:#7f8c8d;">Queues a Celery task to recompute every member's score immediately.</p>
+      {% if perms.aa_corpscore.trigger_recompute %}
+      <form method="post">{% csrf_token %}
+        <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> Recompute all scores now</button>
+      </form>
+      {% else %}
+      <p style="color:var(--cs-red);">You need the <code>trigger_recompute</code> permission.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

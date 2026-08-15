@@ -1,0 +1,112 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --cs-green: #2ecc71;
+    --cs-blue: #3498db;
+    --cs-yellow: #f1c40f;
+    --cs-orange: #f39c12;
+    --cs-red: #e74c3c;
+    --cs-purple: #9b59b6;
+    --cs-gray: #95a5a6;
+  }
+  .cs-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .cs-score-ring {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: #fff;
+    background: conic-gradient(var(--cs-tier-color, var(--cs-gray)) calc(var(--cs-score-pct, 0) * 1%), #ecf0f1 0);
+    position: relative;
+  }
+  .cs-score-ring::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .cs-score-ring > * { z-index: 1; position: relative; }
+  .cs-score-number {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--cs-tier-color, var(--cs-gray));
+  }
+  .cs-tier-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 600;
+    background: var(--cs-tier-color, var(--cs-gray));
+  }
+  .cs-factor {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ecf0f1;
+  }
+  .cs-factor:last-child { border-bottom: none; }
+  .cs-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #ecf0f1;
+    overflow: hidden;
+    flex: 1;
+    margin: 0 12px;
+  }
+  .cs-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--cs-tier-color, var(--cs-blue));
+  }
+  .cs-achievement {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    margin: 4px;
+    font-size: 13px;
+  }
+  .cs-achievement i { color: var(--cs-purple); }
+  .cs-table { width: 100%; border-collapse: collapse; }
+  .cs-table th, .cs-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+  .cs-table th { font-weight: 600; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }
+  .cs-rank { font-weight: 700; color: #7f8c8d; }
+  .cs-statement-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #ecf0f1; }
+  .cs-statement-row .delta-pos { color: var(--cs-green); font-weight: 700; }
+  .cs-statement-row .delta-neg { color: var(--cs-red); font-weight: 700; }
+  .cs-hist-bar { display: inline-block; width: 6px; margin-right: 2px; background: var(--cs-blue); vertical-align: bottom; }
+  .cs-disclaimer { font-size: 11px; color: #bdc3c7; font-style: italic; margin-top: 16px; }
+  .cs-slider { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% block corpscore_content %}{% endblock %}
+  <p class="cs-disclaimer">
+    CorpScore is a meme tool. Scores are not financial advice, not a binding
+    contract, and definitely not admissible in CONCORD court. Hard inquiries
+    may impact your score. Offer subject to director approval.
+  </p>
+</div>
+{% endblock %}

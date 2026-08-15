@@ -1,0 +1,57 @@
+{% extends "aa_corpscore/base.html" %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-search"></i> Breakdown - {{ subject.username }}</h1>
+
+<div class="alert alert-warning" style="font-size:13px;">
+  <i class="fas fa-exclamation-triangle"></i> This was a <strong>hard pull</strong>.
+  It has been logged on {{ subject.username }}'s report and may affect their score.
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="cs-card" style="text-align:center;">
+      {% if snapshot %}
+      <div class="cs-score-ring" style="--cs-tier-color: {{ tier_color }}; --cs-score-pct: {% widthratio snapshot.score score_max 100 %};">
+        <div class="cs-score-number">{{ snapshot.score }}</div>
+        <div style="font-size:12px;color:#7f8c8d;">out of {{ score_max }}</div>
+      </div>
+      <div class="cs-tier-badge" style="background: {{ tier_color }};">{{ tier_label }}</div>
+      <p style="margin-top:12px;font-size:12px;color:#7f8c8d;">{{ snapshot.computed_at|date:"Y-m-d H:i" }}</p>
+      {% else %}
+      <p>No score on file for this member.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Factors</h3>
+      {% for c in components %}
+      <div class="cs-factor" style="--cs-tier-color: {% if c.normalised >= 80 %}var(--cs-green){% elif c.normalised >= 50 %}var(--cs-blue){% elif c.normalised >= 30 %}var(--cs-orange){% else %}var(--cs-red){% endif %};">
+        <div style="width:160px;">
+          <strong>{{ c.component|cut:"_"|title }}</strong>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.note }}</div>
+        </div>
+        <div class="cs-bar"><span style="width: {{ c.normalised|floatformat:0 }}%;"></span></div>
+        <div style="width:90px;text-align:right;">
+          <div style="font-weight:700;">{{ c.normalised|floatformat:0 }}/100</div>
+          <div style="font-size:11px;color:#95a5a6;">{{ c.points|floatformat:1 }} pts</div>
+        </div>
+      </div>
+      {% empty %}
+      <p style="color:#95a5a6;">No component data.</p>
+      {% endfor %}
+    </div>
+
+    {% if achievements %}
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Achievements</h3>
+      {% for a in achievements %}
+      <span class="cs-achievement"><i class="{{ a.achievement.icon }}"></i> {{ a.achievement.name }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

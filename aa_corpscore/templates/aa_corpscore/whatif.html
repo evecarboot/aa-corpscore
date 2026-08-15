@@ -1,0 +1,65 @@
+{% extends "aa_corpscore/base.html" %}
+{% load corpscore_extras %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-sliders-h"></i> Score Simulator</h1>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Adjust your factors</h3>
+      <p style="font-size:13px;color:#7f8c8d;">Drag the sliders to see how changes to your activity would affect your projected score. This is a soft pull - it does not affect your real score.</p>
+      <form method="get">
+        {% for key, weight in weights.items %}
+        <div style="margin-bottom:16px;">
+          <label style="font-weight:600;display:flex;justify-content:space-between;">
+            <span>{{ key|cut:"_"|title }} <span style="color:#95a5a6;font-weight:normal;">({{ weight }}% weight{% if key not in available %} - source unavailable{% endif %})</span></span>
+            <span id="val-{{ key }}">{{ current|get_item:key|default:0|floatformat:0 }}</span>
+          </label>
+          <input type="range" min="0" max="100" step="5" name="{{ key }}" value="{{ overrides|get_item:key|default:current|get_item:key|default:0 }}"
+                 class="cs-slider" oninput="document.getElementById('val-{{ key }}').innerText=this.value;">
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary"><i class="fas fa-calculator"></i> Project my score</button>
+        <a href="{% url 'aa_corpscore:whatif' %}" class="btn btn-default">Reset</a>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="cs-card" style="text-align:center;">
+      {% if projected_score %}
+      <h3 style="margin-top:0;">Projected Score</h3>
+      <div class="cs-score-ring" style="--cs-tier-color: {{ projected_tier_color }}; --cs-score-pct: {% widthratio projected_score score_max 100 %};">
+        <div class="cs-score-number">{{ projected_score }}</div>
+        <div style="font-size:12px;color:#7f8c8d;">projected</div>
+      </div>
+      <div class="cs-tier-badge" style="background: {{ projected_tier_color }};">{{ projected_tier }}</div>
+      {% if current_score %}
+      <p style="margin-top:16px;">
+        Current: <strong>{{ current_score }}</strong> ({{ current_tier }}) &rarr;
+        Projected: <strong>{{ projected_score }}</strong>
+        {% if projected_score > current_score %}
+          <span class="delta-pos" style="color:var(--cs-green);">(+{{ projected_score|sub:current_score }})</span>
+        {% elif projected_score < current_score %}
+          <span class="delta-neg" style="color:var(--cs-red);">({{ projected_score|sub:current_score }})</span>
+        {% else %}
+          <span style="color:#95a5a6;">(no change)</span>
+        {% endif %}
+      </p>
+      {% endif %}
+      {% else %}
+      <h3 style="margin-top:0;">Projected Score</h3>
+      <p style="color:#95a5a6;">Adjust the sliders and hit "Project my score" to see your hypothetical score.</p>
+      {% if current_score %}
+      <div class="cs-score-ring" style="--cs-tier-color: var(--cs-gray); --cs-score-pct: {% widthratio current_score score_max 100 %};">
+        <div class="cs-score-number">{{ current_score }}</div>
+        <div style="font-size:12px;color:#7f8c8d;">current</div>
+      </div>
+      <p>{{ current_tier }}</p>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

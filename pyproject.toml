@@ -12,6 +12,7 @@ authors = [{ name = "aa-corpscore contributors" }]
 license = { text = "MIT" }
 dependencies = [
     "allianceauth>=5.2.0,<6",
+    "requests>=2.28",
 ]
 classifiers = [
     "Environment :: Web Environment",

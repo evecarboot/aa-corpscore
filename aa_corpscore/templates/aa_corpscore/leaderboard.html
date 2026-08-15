@@ -1,0 +1,53 @@
+{% extends "aa_corpscore/base.html" %}
+{% load corpscore_extras %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-trophy"></i> Corp Leaderboard</h1>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Ranked Members</h3>
+      <table class="cs-table">
+        <thead>
+          <tr><th>#</th><th>Member</th><th>Score</th><th>Tier</th><th>Updated</th>{% if perms.aa_corpscore.view_breakdown %}<th></th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr>
+            <td class="cs-rank">{{ forloop.counter }}</td>
+            <td>{{ e.user.username }}</td>
+            <td><strong style="color: {{ e.tier_color }};">{{ e.score }}</strong></td>
+            <td><span class="cs-tier-badge" style="background: {{ e.tier_color }};">{{ e.tier_label }}</span></td>
+            <td style="font-size:12px;color:#95a5a6;">{{ e.computed_at|date:"Y-m-d" }}</td>
+            {% if perms.aa_corpscore.view_breakdown %}
+            <td><a href="{% url 'aa_corpscore:member_breakdown' e.user_id %}" class="btn btn-xs btn-default" title="Hard pull - view breakdown"><i class="fas fa-search"></i></a></td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" style="text-align:center;color:#95a5a6;">No scores computed yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Score Distribution</h3>
+      {% for key, count in distribution.items %}
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;">
+          <span>{{ tier_labels|get_item:key }}</span>
+          <strong>{{ count }}</strong>
+        </div>
+        <div class="cs-bar" style="margin:4px 0 0 0;">
+          <span style="width: {% widthratio count entries|length 100 %}%; background: {{ tier_colors|get_item:key }};"></span>
+        </div>
+      </div>
+      {% endfor %}
+      <p style="font-size:12px;color:#95a5a6;margin-top:12px;">Total scored members: {{ entries|length }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

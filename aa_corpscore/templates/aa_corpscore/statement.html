@@ -1,0 +1,52 @@
+{% extends "aa_corpscore/base.html" %}
+{% load corpscore_extras %}
+
+{% block corpscore_content %}
+<h1><i class="fas fa-file-invoice-dollar"></i> My Statement</h1>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="cs-card" style="text-align:center;">
+      {% if snapshot %}
+      <div class="cs-score-ring" style="--cs-tier-color: {{ tier_color }}; --cs-score-pct: {% widthratio snapshot.score score_max 100 %};">
+        <div class="cs-score-number">{{ snapshot.score }}</div>
+        <div style="font-size:12px;color:#7f8c8d;">current score</div>
+      </div>
+      <div class="cs-tier-badge" style="background: {{ tier_color }};">{{ tier_label }}</div>
+      {% else %}
+      <p>No score on file.</p>
+      {% endif %}
+      <hr>
+      <div style="font-size:13px;color:#7f8c8d;">
+        Statement period: last {{ days }} days
+      </div>
+      <div style="margin-top:8px;">
+        <a href="?days=30" class="btn btn-xs btn-default">30d</a>
+        <a href="?days=90" class="btn btn-xs btn-default">90d</a>
+        <a href="?days=365" class="btn btn-xs btn-default">1y</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="cs-card">
+      <h3 style="margin-top:0;">Activity Statement</h3>
+      {% if events %}
+      {% for e in events %}
+      <div class="cs-statement-row">
+        <span>
+          <strong>{{ e.occurred_at|date:"M d" }}</strong> &middot; {{ e.label }}
+          {% if e.component %}<span style="font-size:11px;color:#95a5a6;">({{ e.component|cut:"_"|title }})</span>{% endif %}
+        </span>
+        <span class="{% if e.delta >= 0 %}delta-pos{% else %}delta-neg{% endif %}">
+          {% if e.delta >= 0 %}+{% endif %}{{ e.delta }} pts
+        </span>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p style="color:#95a5a6;">No score events in this period. Get out there and fly some fleets, capsuleer.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
